@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-import fcntl
 import array
 import os
-import struct
 import select
-import threading
-import subprocess
 import logging
 
-logger = logging.getLogger()
+#logger = logging.get#logger()
 
 PERCENT = 0.35
 BITS = 0
@@ -40,7 +36,8 @@ one_space_lower = 0
 #get all *.conf files
 def getConfFiles():
   allConfFiles = []
-  files = os.listdir("/etc/lirc")
+  #files = os.listdir("/etc/lirc")
+  files = os.listdir("C:/Users/RobSimon/Desktop/unittest project/")
   for file in files:
         if file.endswith('.conf'):
             allConfFiles.append(file)
@@ -50,12 +47,12 @@ def getConfFiles():
 def formatConfFiles(file):
   contents = []
   temp = []
+  #with open("/etc/lirc/"+filename, "r") as file:
   for currentLine in file:
     if currentLine.startswith("#"):
       continue
     else:
       temp.append("".join(currentLine.strip()))
-  file.close()
 
   for line in temp:
     new_format = line.replace('\t', ' ')
@@ -65,7 +62,6 @@ def formatConfFiles(file):
   contents = [x.split(" ") for x in contents]
   return contents
 
-#parse the config files
 def parseConfFile(allDevices, contents):
   index1 = -1
   index2 = -1
@@ -91,6 +87,7 @@ def parseConfFile(allDevices, contents):
         if contents[i][j] == 'end' and contents[i][j+1] == 'remote':
           index2 = i
           allDevices[name] = contents[index1:index2+1]
+          #del contents[index1:index2+1]
           break
   return allDevices
 
@@ -100,16 +97,18 @@ def readConf():
   allDevices = {}
   allConfFiles = []
   contents = []
+  #files = os.listdir("/etc/lirc")
   allConfFiles = getConfFiles()
   for filename in allConfFiles:
-    with open("/etc/lirc/"+filename, "r") as file:
+    with open("C:/Users/RobSimon/Desktop/unittest project/"+filename, "r") as file:
+    #with open("/etc/lirc/"+filename, "r") as file:
       contents = formatConfFiles(file)
+    file.close()
     allDevices = parseConfFile(allDevices, contents)
     del contents[:]
     
   return allDevices
 
-#gather all header information
 def getHeaderInfo(file, allDevices):
   headerInfo = {
     "bits":"",
@@ -149,10 +148,10 @@ def getHeaderInfo(file, allDevices):
 
   return headerInfo
 
-#set all global variables from header information
 def setHeaderInfo(headerInfo):
   global header_pulse_upper,header_pulse_lower,header_space_upper,header_space_lower,zero_pulse_upper,zero_pulse_lower,zero_space_upper,zero_space_lower,one_pulse_upper,one_pulse_lower,one_space_upper, one_space_lower, bitTotal
   global ZERO_PULSE, ZERO_SPACE, ONE_PULSE, ONE_SPACE, PRE_DATA, PRE_DATA_BITS, BITS
+ 
   #setting variables from header info
   if len(headerInfo) > 0:
     ZERO_PULSE = headerInfo["zero_pulse"]
@@ -189,8 +188,6 @@ def setHeaderInfo(headerInfo):
   one_space_lower = float(ONE_SPACE) - (float(ONE_SPACE)*float(PERCENT))
   return 1
 
-
-#functions to determine whether value lies between our threshold
 def isWithinHeaderPulseRange(value):
   return (float(value) >= header_pulse_lower and float(value) <= header_pulse_upper)
 def isWithinHeaderSpaceRange(value):
@@ -216,15 +213,15 @@ def decode(val, file, allDevices):
       
       #find header information from val data
       if  (i+1 < len(val)) and (isWithinHeaderPulseRange(float(val[i][1])) or isWithinHeaderSpaceRange(float(val[i+1][1]))):
-        logger.debug( "HEADER found at i = " + str(i) + " with value = " + str(val[i][1]) ) 
+        #logger.debug( "HEADER found at i = " + str(i) + " with value = " + str(val[i][1]) ) 
         decoded_val = ""
         #start reading after header is found, increment +2 due to space and pulse pair
         for k in range(i+2,len(val),2):
-          logger.debug( "i=" + str(i) + " k=" + str(k) + " len=" + str(len(val)))
-          logger.debug("val[k][1] (PULSE-ZERO) = " + str(val[k][1]) + " " + str( zero_pulse_lower ) + " " + str( zero_pulse_upper ))
-          logger.debug("val[k+1][1] (SPACE-ZERO) = " + str(val[k+1][1]) + " " + str( zero_space_lower ) + " " + str( zero_space_upper ))
-          logger.debug("val[k][1] (PULSE-ONE) = " + str(val[k][1]) + " " + str( one_pulse_lower ) + " " + str( one_pulse_upper ))
-          logger.debug("val[k+1][1] (SPACE-ONE) = " + str(val[k+1][1]) + " " + str( one_space_lower ) + " " + str( one_space_upper ))
+          #logger.debug( "i=" + str(i) + " k=" + str(k) + " len=" + str(len(val)))
+          #logger.debug("val[k][1] (PULSE-ZERO) = " + str(val[k][1]) + " " + str( zero_pulse_lower ) + " " + str( zero_pulse_upper ))
+          #logger.debug("val[k+1][1] (SPACE-ZERO) = " + str(val[k+1][1]) + " " + str( zero_space_lower ) + " " + str( zero_space_upper ))
+          #logger.debug("val[k][1] (PULSE-ONE) = " + str(val[k][1]) + " " + str( one_pulse_lower ) + " " + str( one_pulse_upper ))
+          #logger.debug("val[k+1][1] (SPACE-ONE) = " + str(val[k+1][1]) + " " + str( one_space_lower ) + " " + str( one_space_upper ))
 
           if isWithinZeroPulseRange(float(val[k][1])):
             if isWithinZeroSpaceRange(float(val[k+1][1])):
@@ -237,7 +234,7 @@ def decode(val, file, allDevices):
               decoded_val += "1"
               count +=1
         
-          logger.debug("decode_val = " + decoded_val)
+          #logger.debug("decode_val = " + decoded_val)
           
          # every 4 binary bits we get the hex value
           if count % 4 == 0 and count != 0 :
@@ -248,8 +245,8 @@ def decode(val, file, allDevices):
             final += str(hex(decimal)[2:])
             decoded_val = ""
           
-          logger.debug("count= " + str(count) + " bitTotal=" + str(bitTotal))
-          logger.debug("final= " + final.upper())
+          #logger.debug("count= " + str(count) + " bitTotal=" + str(bitTotal))
+          #logger.debug("final= " + final.upper())
           if count == bitTotal:
             for key, value in enumerate(allDevices[file]):
               for x in value:
@@ -257,5 +254,21 @@ def decode(val, file, allDevices):
                   return allDevices[file][key][0]
             return "error"
           
-  logger.debug("Error: bit count does not equal total bits or config file error")
+  #logger.debug("Error: bit count does not equal total bits or config file error")
   return
+
+# def main():
+#   test = {}
+#   temp = []
+#   with open("C:/Users/RobSimon/Desktop/unittest project/"+"key_mode.txt", "r") as file:
+#     #with open("/etc/lirc/"+filename, "r") as file:
+#     for currentLine in file:
+#       temp.append("".join(currentLine.strip()))
+#     file.close()
+#   test = readConf()
+#   #print(test)
+#   temp = [x.split(" ") for x in temp]
+  
+#   decode(temp,"lircd.conf",test)
+
+# main()
